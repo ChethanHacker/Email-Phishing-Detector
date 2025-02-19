@@ -1,42 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>URL Safety Checker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Phishing Detector</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 2rem; }
-        .container { max-width: 600px; margin: 0 auto; }
-        input { width: 80%; padding: 10px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; }
-        .result { margin-top: 1rem; font-weight: bold; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: auto;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+        }
+
+        button {
+            background-color: #ff5733;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #c44222;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffecb5;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Check SMS Link Safety</h1>
-        <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com)">
-        <button onclick="checkUrl()">Check</button>
-        <div id="result" class="result"></div>
+        <h1>Email Phishing Detector</h1>
+        <textarea id="emailContent" placeholder="Paste your email content here..." rows="10"></textarea>
+        <button onclick="analyzeEmail()">Analyze Email</button>
+        <h3>Analysis Results:</h3>
+        <div id="result"></div>
     </div>
 
     <script>
-        async function checkUrl() {
-            const url = document.getElementById('urlInput').value;
-            const resultDiv = document.getElementById('result');
-            resultDiv.textContent = "Checking...";
+        function analyzeEmail() {
+            let emailContent = document.getElementById("emailContent").value;
+            let resultDiv = document.getElementById("result");
+            let score = 0;
+            let warnings = [];
 
-            try {
-                const response = await fetch('/check-url', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
+            // **1. Detect Suspicious Links**
+            let urlRegex = /https?:\/\/[^\s]+/g;
+            let foundUrls = emailContent.match(urlRegex);
+            if (foundUrls) {
+                foundUrls.forEach(url => {
+                    if (url.includes("bit.ly") || url.includes("tinyurl") || url.includes("free-gift")) {
+                        score += 2;
+                        warnings.push(`⚠️ Suspicious shortened link detected: ${url}`);
+                    } else if (!url.includes("trusted.com")) { // Example safe domain
+                        score += 1;
+                        warnings.push(`⚠️ Unknown external link: ${url}`);
+                    }
                 });
+            }
 
-                const data = await response.json();
-                resultDiv.textContent = data.message;
-                resultDiv.style.color = data.is_safe ? 'green' : 'red';
-            } catch (error) {
-                resultDiv.textContent = "Error checking URL";
-                resultDiv.style.color = 'black';
+            // **2. Detect Phishing Keywords**
+            let phishingWords = ["urgent", "verify", "password", "click here", "account locked", "update info", "bank"];
+            phishingWords.forEach(word => {
+                if (emailContent.toLowerCase().includes(word)) {
+                    score += 1;
+                    warnings.push(`⚠️ Phishing keyword detected: "${word}"`);
+                }
+            });
+
+            // **3. Check for Fake Sender Information**
+            let fakeSenders = ["@paypal-security.com", "@bank-alerts.com"];
+            fakeSenders.forEach(sender => {
+                if (emailContent.includes(sender)) {
+                    score += 2;
+                    warnings.push(`⚠️ Fake sender email detected: ${sender}`);
+                }
+            });
+
+            // **Final Result Output**
+            if (score >= 3) {
+                resultDiv.innerHTML = `<strong style="color:red;">⚠️ High risk of phishing!</strong><br>` + warnings.join("<br>");
+            } else if (score > 0) {
+                resultDiv.innerHTML = `<strong style="color:orange;">⚠️ Potential phishing detected!</strong><br>` + warnings.join("<br>");
+            } else {
+                resultDiv.innerHTML = `<strong style="color:green;">✅ No phishing detected.</strong>`;
             }
         }
     </script>
